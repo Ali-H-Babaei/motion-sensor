@@ -30,6 +30,10 @@ class MotionSensor(object):
             raise ValueError('Unable to get response from motion/temp sensor')
 
         sensor_state = response.json()
+
+        if not sensor_state['state']['temperature']:
+            return -99.99
+
         temperature = self.get_temp_from_int(sensor_state['state']['temperature'])
         if self.last_temp != temperature:
             print(f'Temp changed! Temp: {temperature:.2f}')
@@ -41,15 +45,8 @@ class MotionSensor(object):
     @staticmethod
     def get_temp_from_int(temp: int = 0):
         # (0°C × 9/5) + 32 = 32°F
-        float_val = MotionSensor.get_float_from_string(temp)
+        # temp is current temperature in 0.01 degrees Celsius.
+        float_val = float(temp/100.0)
 
         fahrenheit = (float_val * (9 / 5)) + 32.0
         return fahrenheit
-
-    @staticmethod
-    def get_float_from_string(temp):
-        str_temp = str(temp)
-        fractional_value = str_temp[-2:]
-        whole_number = str_temp[:-2]
-        float_val = float(f'{whole_number}.{fractional_value}')
-        return float_val
