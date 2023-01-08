@@ -4,14 +4,15 @@ Python example using the Philips Hue API and the Philips Hue motion sensor. The 
 
 The Philips Hue API doesn't list "temperature" as an available state value so here is additional information regarding the sensor being used in case not all Philips Hue motion sensors have temperature available:
 
-Type: "ZLLTemperature"
-Model id: "SML001"
-Manufacturer Name: "Signify Netherlands B.V."
-Product Name: "Hue temperature sensor"
-Software Version: "6.1.1.27575" 
+| Property          | Value                    |
+|:------------------|:-------------------------|
+| Type              | ZLLTemperature           |
+| Model id          | SML001                   |
+| Manufacturer Name | Signify Netherlands B.V. |
+| Product Name      | Hue temperature sensor   |
+| Software Version  | 6.1.1.27575              | 
 
 ## Command Line Args
-
 
 | Short Option | Long Option | Description |
 |:---:|:---:|:---|
