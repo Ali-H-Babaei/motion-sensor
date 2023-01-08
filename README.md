@@ -14,10 +14,10 @@ The Philips Hue API doesn't list "temperature" as an available state value so he
 
 ## Command Line Args
 
-| Short Option | Long Option | Description |
-|:---:|:---:|:---|
-| `-b` |  `--bridge` | Bridge, or hub, IP address |
-| `-u` | `--username` |  Username created for interacting with the Hue Bridge |
-| `-i` | `--interval` |  Interval in seconds to check motion sensor temperature value |
-| `-s` |`--sensor` | Sensor id for the sensor to monitor |
+| Short Option | Long Option  | Description                                                  |
+|:------------:|:------------:|:-------------------------------------------------------------|
+|     `-b`     |  `--bridge`  | Bridge, or hub, IP address                                   |
+|     `-u`     | `--username` | Username created for interacting with the Hue Bridge         |
+|     `-i`     | `--interval` | Interval in seconds to check motion sensor temperature value |
+|     `-s`     | `--sensors`  | Comma separated list of Sensor IDs to monitor                |
 
