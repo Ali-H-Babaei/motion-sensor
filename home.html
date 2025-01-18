@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Floor Plan Designer</title>
+  <style>
+    .floor-plan {
+      position: relative;
+      width: 800px;
+      height: 600px;
+      margin: auto;
+      border: 2px solid #000;
+      padding: 10px;
+      background: #f8f8f8;
+    }
+
+    .room {
+      position: absolute;
+      min-width: 100px;
+      min-height: 80px;
+      background-color: #f0f0f0;
+      border: 1px solid #000;
+      cursor: move;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .resize-handle {
+      width: 10px;
+      height: 10px;
+      background-color: #0066ff;
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      cursor: se-resize;
+    }
+
+    .room.dragging {
+      opacity: 0.8;
+      z-index: 1000;
+    }
+
+    .room span {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      font-weight: bold;
+      color: #ff0000;
+      font-size: 16px;
+      transition: transform 0.3s ease, color 0.3s ease;
+    }
+
+    .room span.update {
+      transform: scale(1.5);
+      color: #0000ff;
+    }
+
+    .controls {
+      margin: 20px auto;
+      width: 800px;
+      padding: 10px;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+    }
+
+    .room.selected {
+      border: 2px solid blue;
+    }
+
+    .delete-button {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: #ff4444;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        line-height: 20px;
+        cursor: pointer;
+        z-index: 2;
+    }
+
+    .new-room-form {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    button {
+      margin: 5px;
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="new-room-form">
+            <input type="text" id="roomName" placeholder="Room name">
+            <button onclick="addNewRoom()">Add Room</button>
+            <button onclick="saveToServer()">Save Layout</button>
+            <select id="layoutSelect">
+                <option value="">Select a layout...</option>
+            </select>
+            <button onclick="loadFromServer()">Load Layout</button>
+        </div>
+    </div>
+
+    <div class="floor-plan" id="floorPlan">
+        <!-- Template for new rooms -->
+        <template id="roomTemplate">
+            <div class="room" style="left: 10px; top: 10px; width: 150px; height: 100px;">
+                <button class="delete-button" onclick="deleteRoom(this.parentElement)">×</button>
+                <span class="temp"></span>
+                <div class="resize-handle"></div>
+            </div>
+        </template>
+    </div>
+
+  <script>
+    let isDragging = false;
+    let isResizing = false;
+    let currentElement = null;
+    let initialX, initialY, initialLeft, initialTop, initialWidth, initialHeight;
+
+    document.querySelectorAll('.room').forEach(room => {
+      room.addEventListener('mousedown', startDragOrResize);
+      room.querySelector('.resize-handle').addEventListener('mousedown', (e) => {
+        isResizing = true;
+        currentElement = room;
+        initialX = e.clientX;
+        initialY = e.clientY;
+        initialWidth = room.offsetWidth;
+        initialHeight = room.offsetHeight;
+        e.stopPropagation();
+      });
+    });
+
+    function startDragOrResize(e) {
+      if (e.target.classList.contains('resize-handle')) return;
+      
+      isDragging = true;
+      currentElement = this;
+      initialX = e.clientX;
+      initialY = e.clientY;
+      initialLeft = this.offsetLeft;
+      initialTop = this.offsetTop;
+      
+      this.classList.add('dragging');
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const dx = e.clientX - initialX;
+        const dy = e.clientY - initialY;
+        
+        currentElement.style.left = `${initialLeft + dx}px`;
+        currentElement.style.top = `${initialTop + dy}px`;
+      }
+      else if (isResizing) {
+        const dx = e.clientX - initialX;
+        const dy = e.clientY - initialY;
+        
+        currentElement.style.width = `${initialWidth + dx}px`;
+        currentElement.style.height = `${initialHeight + dy}px`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (currentElement && isDragging) {
+        currentElement.classList.remove('dragging');
+      }
+      isDragging = false;
+      isResizing = false;
+      currentElement = null;
+    });
+
+    // Example of temperature updates
+    let temperatures = {
+      "temp-entry": 22,
+      "temp-bed1": 23,
+      "temp-ensuite": 24,
+      "temp-bath": 20,
+      "temp-bed2": 21,
+      "temp-bed3": 19,
+      "temp-living": 25,
+      "temp-dining": 22,
+      "temp-kitchen": 23,
+      "temp-laundry": 19
+    };
+
+    // Function to update temperature values and animate
+    function updateTemperatures() {
+      for (const [id, newTemp] of Object.entries(temperatures)) {
+        const tempElement = document.getElementById(id);
+        if (!tempElement) continue; // Skip if element doesn't exist
+
+        // Add animation class
+        tempElement.classList.add('update');
+
+        // Update the text content
+        tempElement.textContent = `${newTemp}°C`;
+
+        // Remove the animation class after the transition
+        setTimeout(() => {
+          if (tempElement) { // Check if element still exists
+            tempElement.classList.remove('update');
+          }
+        }, 300); // Match the transition duration in CSS
+      }
+    }
+
+    // Simulate periodic updates
+    setInterval(() => {
+      // Randomize temperatures for demonstration
+      for (const id in temperatures) {
+        temperatures[id] = Math.floor(Math.random() * 10) + 18; // Random temp between 18 and 27
+      }
+      updateTemperatures();
+    }, 5000); // Update every 5 seconds
+
+    function addNewRoom() {
+        const roomName = document.getElementById('roomName').value.trim();
+        if (!roomName) return;
+
+        const template = document.getElementById('roomTemplate');
+        const newRoom = template.content.cloneNode(true).children[0];
+        
+        // Set room name and create temperature span
+        newRoom.insertBefore(document.createTextNode(roomName), newRoom.firstChild);
+        const tempSpan = newRoom.querySelector('.temp');
+        const tempId = `temp-${roomName.toLowerCase().replace(/\s+/g, '-')}`;
+        tempSpan.id = tempId;
+        tempSpan.textContent = '20°C';
+
+        // Add to temperature monitoring
+        temperatures[tempId] = 20;
+
+        // Add drag and resize listeners
+        newRoom.addEventListener('mousedown', startDragOrResize);
+        newRoom.querySelector('.resize-handle').addEventListener('mousedown', (e) => {
+            isResizing = true;
+            currentElement = newRoom;
+            initialX = e.clientX;
+            initialY = e.clientY;
+            initialWidth = newRoom.offsetWidth;
+            initialHeight = newRoom.offsetHeight;
+            e.stopPropagation();
+        });
+
+        document.getElementById('floorPlan').appendChild(newRoom);
+        document.getElementById('roomName').value = '';
+    }
+
+    function deleteRoom(room) {
+        const tempSpan = room.querySelector('span');
+        delete temperatures[tempSpan.id];
+        room.remove();
+    }
+
+    async function saveToServer() {
+        const layout = [];
+        document.querySelectorAll('.room').forEach(room => {
+            layout.push({
+                name: room.childNodes[0].textContent,
+                tempId: room.querySelector('span').id,
+                left: room.style.left,
+                top: room.style.top,
+                width: room.style.width,
+                height: room.style.height
+            });
+        });
+
+        try {
+            const response = await fetch('/api/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(layout)
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert('Layout saved successfully!');
+                updateLayoutList();
+            }
+        } catch (error) {
+            console.error('Error saving layout:', error);
+            alert('Error saving layout');
+        }
+    }
+
+    async function updateLayoutList() {
+        try {
+            const response = await fetch('/api/layouts');
+            const files = await response.json();
+            const select = document.getElementById('layoutSelect');
+            select.innerHTML = '<option value="">Select a layout...</option>';
+            files.forEach(file => {
+                const option = document.createElement('option');
+                option.value = file;
+                option.textContent = file;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading layout list:', error);
+        }
+    }
+
+    async function loadFromServer() {
+        const filename = document.getElementById('layoutSelect').value;
+        if (!filename) return;
+
+        try {
+            const response = await fetch(`/api/load/${filename}`);
+            const layout = await response.json();
+            
+            // Clear existing rooms
+            document.querySelectorAll('.room').forEach(room => room.remove());
+            temperatures = {};
+
+            // Use existing room creation logic
+            layout.forEach(roomData => {
+                const template = document.getElementById('roomTemplate');
+                const newRoom = template.content.cloneNode(true).children[0];
+                
+                newRoom.insertBefore(document.createTextNode(roomData.name), newRoom.firstChild);
+                const tempSpan = newRoom.querySelector('.temp');
+                tempSpan.id = roomData.tempId;
+                tempSpan.textContent = '20°C';
+
+                newRoom.style.left = roomData.left;
+                newRoom.style.top = roomData.top;
+                newRoom.style.width = roomData.width;
+                newRoom.style.height = roomData.height;
+
+                temperatures[roomData.tempId] = 20;
+
+                newRoom.addEventListener('mousedown', startDragOrResize);
+                newRoom.querySelector('.resize-handle').addEventListener('mousedown', (e) => {
+                    isResizing = true;
+                    currentElement = newRoom;
+                    initialX = e.clientX;
+                    initialY = e.clientY;
+                    initialWidth = newRoom.offsetWidth;
+                    initialHeight = newRoom.offsetHeight;
+                    e.stopPropagation();
+                });
+
+                document.getElementById('floorPlan').appendChild(newRoom);
+            });
+        } catch (error) {
+            console.error('Error loading layout:', error);
+            alert('Error loading layout');
+        }
+    }
+
+    // Load layout list when page loads
+    updateLayoutList();
+  </script>
+</body>
+</html>
