@@ -4,8 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <title>Floor Plan Designer</title>
   <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 500;
+    }
+
+    button, input, select {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 500;
+    }
+
     .floor-plan {
       position: relative;
       width: 800px;
@@ -14,20 +27,25 @@
       border: 2px solid #000;
       padding: 10px;
       background: #f8f8f8;
+      background-image: 
+        linear-gradient(#ccc 1px, transparent 1px),
+        linear-gradient(90deg, #ccc 1px, transparent 1px);
+      background-size: 20px 20px;
     }
 
     .room {
       position: absolute;
       min-width: 100px;
       min-height: 80px;
-      background-color: #f0f0f0;
-      border: 1px solid #000;
+      background-color: white;
+      border: 3px solid #000;
       cursor: move;
       user-select: none;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
+      font-weight: 700;
     }
 
     .resize-handle {
@@ -35,10 +53,13 @@
       height: 10px;
       background-color: #0066ff;
       position: absolute;
-      right: 0;
-      bottom: 0;
       cursor: se-resize;
     }
+
+    .resize-handle.nw { left: -5px; top: -5px; cursor: nw-resize; }
+    .resize-handle.ne { right: -5px; top: -5px; cursor: ne-resize; }
+    .resize-handle.sw { left: -5px; bottom: -5px; cursor: sw-resize; }
+    .resize-handle.se { right: -5px; bottom: -5px; cursor: se-resize; }
 
     .room.dragging {
       opacity: 0.8;
@@ -76,15 +97,22 @@
         position: absolute;
         top: 5px;
         right: 5px;
-        background: #ff4444;
-        color: white;
+        background: none;
+        color: #ff4444;
         border: none;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        line-height: 20px;
+        font-size: 24px;
+        font-weight: bold;
         cursor: pointer;
         z-index: 2;
+        width: auto;
+        height: auto;
+        line-height: 20px;
+        padding: 0;
+    }
+
+    .delete-button:hover {
+        color: #ff0000;
+        transform: scale(1.1);
     }
 
     .new-room-form {
@@ -109,6 +137,7 @@
                 <option value="">Select a layout...</option>
             </select>
             <button onclick="loadFromServer()">Load Layout</button>
+            <button onclick="window.location.href='viewer.html'" style="margin-left: auto; background-color: #4CAF50; color: white;">View Temperature Map</button>
         </div>
     </div>
 
@@ -116,43 +145,63 @@
         <!-- Template for new rooms -->
         <template id="roomTemplate">
             <div class="room" style="left: 10px; top: 10px; width: 150px; height: 100px;">
-                <button class="delete-button" onclick="deleteRoom(this.parentElement)">×</button>
+                <button class="delete-button" onclick="deleteRoom(this.parentElement)">✕</button>
                 <span class="temp"></span>
-                <div class="resize-handle"></div>
+                <div class="resize-handle nw"></div>
+                <div class="resize-handle ne"></div>
+                <div class="resize-handle sw"></div>
+                <div class="resize-handle se"></div>
             </div>
         </template>
     </div>
 
   <script>
+    // Add grid constants
+    const GRID_SIZE = 20;
+
+    // Helper function to snap value to grid
+    function snapToGrid(value) {
+      return Math.round(value / GRID_SIZE) * GRID_SIZE;
+    }
+
     let isDragging = false;
     let isResizing = false;
     let currentElement = null;
     let initialX, initialY, initialLeft, initialTop, initialWidth, initialHeight;
+    let activeHandle = null; // Add this new variable
 
     document.querySelectorAll('.room').forEach(room => {
       room.addEventListener('mousedown', startDragOrResize);
-      room.querySelector('.resize-handle').addEventListener('mousedown', (e) => {
-        isResizing = true;
-        currentElement = room;
-        initialX = e.clientX;
-        initialY = e.clientY;
-        initialWidth = room.offsetWidth;
-        initialHeight = room.offsetHeight;
-        e.stopPropagation();
+      room.querySelectorAll('.resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', (e) => startResize(e, handle));
       });
     });
 
     function startDragOrResize(e) {
-      if (e.target.classList.contains('resize-handle')) return;
+      if (e.target.classList.contains('resize-handle') || e.target.classList.contains('delete-button')) return;
       
       isDragging = true;
       currentElement = this;
       initialX = e.clientX;
       initialY = e.clientY;
-      initialLeft = this.offsetLeft;
-      initialTop = this.offsetTop;
+      initialLeft = snapToGrid(this.offsetLeft);
+      initialTop = snapToGrid(this.offsetTop);
       
       this.classList.add('dragging');
+    }
+
+    function startResize(e, handle) {
+        e.preventDefault();
+        e.stopPropagation();
+        isResizing = true;
+        activeHandle = handle;
+        currentElement = handle.parentElement;
+        initialX = e.clientX;
+        initialY = e.clientY;
+        initialWidth = currentElement.offsetWidth;
+        initialHeight = currentElement.offsetHeight;
+        initialLeft = currentElement.offsetLeft;
+        initialTop = currentElement.offsetTop;
     }
 
     document.addEventListener('mousemove', (e) => {
@@ -160,15 +209,49 @@
         const dx = e.clientX - initialX;
         const dy = e.clientY - initialY;
         
-        currentElement.style.left = `${initialLeft + dx}px`;
-        currentElement.style.top = `${initialTop + dy}px`;
+        const newLeft = snapToGrid(initialLeft + dx);
+        const newTop = snapToGrid(initialTop + dy);
+        
+        currentElement.style.left = `${newLeft}px`;
+        currentElement.style.top = `${newTop}px`;
       }
-      else if (isResizing) {
+      else if (isResizing && activeHandle) {
         const dx = e.clientX - initialX;
         const dy = e.clientY - initialY;
         
-        currentElement.style.width = `${initialWidth + dx}px`;
-        currentElement.style.height = `${initialHeight + dy}px`;
+        let newWidth = initialWidth;
+        let newHeight = initialHeight;
+        let newLeft = initialLeft;
+        let newTop = initialTop;
+
+        if (activeHandle.classList.contains('nw')) {
+            newWidth = initialWidth - dx;
+            newHeight = initialHeight - dy;
+            newLeft = initialLeft + dx;
+            newTop = initialTop + dy;
+        } else if (activeHandle.classList.contains('ne')) {
+            newWidth = initialWidth + dx;
+            newHeight = initialHeight - dy;
+            newTop = initialTop + dy;
+        } else if (activeHandle.classList.contains('sw')) {
+            newWidth = initialWidth - dx;
+            newHeight = initialHeight + dy;
+            newLeft = initialLeft + dx;
+        } else if (activeHandle.classList.contains('se')) {
+            newWidth = initialWidth + dx;
+            newHeight = initialHeight + dy;
+        }
+
+        // Snap to grid and ensure minimum size
+        newWidth = snapToGrid(Math.max(100, newWidth));
+        newHeight = snapToGrid(Math.max(80, newHeight));
+        newLeft = snapToGrid(newLeft);
+        newTop = snapToGrid(newTop);
+
+        currentElement.style.width = `${newWidth}px`;
+        currentElement.style.height = `${newHeight}px`;
+        currentElement.style.left = `${newLeft}px`;
+        currentElement.style.top = `${newTop}px`;
       }
     });
 
@@ -179,6 +262,7 @@
       isDragging = false;
       isResizing = false;
       currentElement = null;
+      activeHandle = null;
     });
 
     // Example of temperature updates
@@ -232,6 +316,12 @@
         const template = document.getElementById('roomTemplate');
         const newRoom = template.content.cloneNode(true).children[0];
         
+        // Snap initial position to grid
+        newRoom.style.left = `${snapToGrid(10)}px`;
+        newRoom.style.top = `${snapToGrid(10)}px`;
+        newRoom.style.width = `${snapToGrid(150)}px`;
+        newRoom.style.height = `${snapToGrid(100)}px`;
+
         // Set room name and create temperature span
         newRoom.insertBefore(document.createTextNode(roomName), newRoom.firstChild);
         const tempSpan = newRoom.querySelector('.temp');
@@ -244,14 +334,8 @@
 
         // Add drag and resize listeners
         newRoom.addEventListener('mousedown', startDragOrResize);
-        newRoom.querySelector('.resize-handle').addEventListener('mousedown', (e) => {
-            isResizing = true;
-            currentElement = newRoom;
-            initialX = e.clientX;
-            initialY = e.clientY;
-            initialWidth = newRoom.offsetWidth;
-            initialHeight = newRoom.offsetHeight;
-            e.stopPropagation();
+        newRoom.querySelectorAll('.resize-handle').forEach(handle => {
+            handle.addEventListener('mousedown', (e) => startResize(e, handle));
         });
 
         document.getElementById('floorPlan').appendChild(newRoom);
@@ -343,14 +427,8 @@
                 temperatures[roomData.tempId] = 20;
 
                 newRoom.addEventListener('mousedown', startDragOrResize);
-                newRoom.querySelector('.resize-handle').addEventListener('mousedown', (e) => {
-                    isResizing = true;
-                    currentElement = newRoom;
-                    initialX = e.clientX;
-                    initialY = e.clientY;
-                    initialWidth = newRoom.offsetWidth;
-                    initialHeight = newRoom.offsetHeight;
-                    e.stopPropagation();
+                newRoom.querySelectorAll('.resize-handle').forEach(handle => {
+                    handle.addEventListener('mousedown', (e) => startResize(e, handle));
                 });
 
                 document.getElementById('floorPlan').appendChild(newRoom);
