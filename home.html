@@ -7,125 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
   <title>Floor Plan Designer</title>
-  <style>
-    body {
-      font-family: 'Roboto', sans-serif;
-      font-weight: 500;
-    }
-
-    button, input, select {
-      font-family: 'Roboto', sans-serif;
-      font-weight: 500;
-    }
-
-    .floor-plan {
-      position: relative;
-      width: 800px;
-      height: 600px;
-      margin: auto;
-      border: 2px solid #000;
-      padding: 10px;
-      background: #f8f8f8;
-      background-image: 
-        linear-gradient(#ccc 1px, transparent 1px),
-        linear-gradient(90deg, #ccc 1px, transparent 1px);
-      background-size: 20px 20px;
-    }
-
-    .room {
-      position: absolute;
-      min-width: 100px;
-      min-height: 80px;
-      background-color: white;
-      border: 3px solid #000;
-      cursor: move;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      font-weight: 700;
-    }
-
-    .resize-handle {
-      width: 10px;
-      height: 10px;
-      background-color: #0066ff;
-      position: absolute;
-      cursor: se-resize;
-    }
-
-    .resize-handle.nw { left: -5px; top: -5px; cursor: nw-resize; }
-    .resize-handle.ne { right: -5px; top: -5px; cursor: ne-resize; }
-    .resize-handle.sw { left: -5px; bottom: -5px; cursor: sw-resize; }
-    .resize-handle.se { right: -5px; bottom: -5px; cursor: se-resize; }
-
-    .room.dragging {
-      opacity: 0.8;
-      z-index: 1000;
-    }
-
-    .room span {
-      position: absolute;
-      bottom: 5px;
-      right: 5px;
-      font-weight: bold;
-      color: #ff0000;
-      font-size: 16px;
-      transition: transform 0.3s ease, color 0.3s ease;
-    }
-
-    .room span.update {
-      transform: scale(1.5);
-      color: #0000ff;
-    }
-
-    .controls {
-      margin: 20px auto;
-      width: 800px;
-      padding: 10px;
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-    }
-
-    .room.selected {
-      border: 2px solid blue;
-    }
-
-    .delete-button {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        background: none;
-        color: #ff4444;
-        border: none;
-        font-size: 24px;
-        font-weight: bold;
-        cursor: pointer;
-        z-index: 2;
-        width: auto;
-        height: auto;
-        line-height: 20px;
-        padding: 0;
-    }
-
-    .delete-button:hover {
-        color: #ff0000;
-        transform: scale(1.1);
-    }
-
-    .new-room-form {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-
-    button {
-      margin: 5px;
-      padding: 5px 10px;
-    }
-  </style>
 </head>
 <body>
     <div class="controls">
@@ -141,10 +24,10 @@
         </div>
     </div>
 
-    <div class="floor-plan" id="floorPlan">
+    <div class="floor-plan editor" id="floorPlan">
         <!-- Template for new rooms -->
         <template id="roomTemplate">
-            <div class="room" style="left: 10px; top: 10px; width: 150px; height: 100px;">
+            <div class="room editor" style="left: 10px; top: 10px; width: 150px; height: 100px;">
                 <button class="delete-button" onclick="deleteRoom(this.parentElement)">✕</button>
                 <span class="temp"></span>
                 <div class="resize-handle nw"></div>
@@ -392,6 +275,13 @@
                 option.textContent = file;
                 select.appendChild(option);
             });
+
+            // Auto-load most recent layout
+            if (files.length > 0) {
+                const latestFile = files[files.length - 1];
+                select.value = latestFile;
+                loadFromServer();
+            }
         } catch (error) {
             console.error('Error loading layout list:', error);
         }
