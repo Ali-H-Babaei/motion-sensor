@@ -21,6 +21,7 @@ HISTORY_SIZE = 60  # Store 60 seconds of history
 DATA_DIR = "temperature_data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# Modify the get_hue_temperature_sensors function to print JSON output
 def get_hue_temperature_sensors(bridge_ip, username):
     url = f'http://{bridge_ip}/api/{username}/sensors'
     response = requests.get(url)
@@ -34,9 +35,10 @@ def get_hue_temperature_sensors(bridge_ip, username):
                     'name': sensor['name'],
                     'temperature': sensor['state']['temperature'] / 100.0  # Convert from deci-degrees to degrees Celsius
                 }
+        print(json.dumps(temperature_sensors), flush=True)  # Only keep this print for Node.js communication
         return temperature_sensors
     else:
-        print(f"Failed to connect to the Hue Bridge. Status code: {response.status_code}")
+        print(json.dumps({}), flush=True)  # Only keep this print for Node.js communication
         return None
 
 class DatabaseManager:
@@ -155,30 +157,10 @@ class TemperatureMonitor:
             fig.tight_layout(pad=0)
             canvas.draw()
 
+    # Modify the update_temperatures method in TemperatureMonitor class
     def update_temperatures(self):
         while self.running:
             sensors = get_hue_temperature_sensors(BRIDGE_IP, USERNAME)
-            if sensors:
-                for sensor_id, data in sensors.items():
-                    name = data['name']
-                    temp = data['temperature']
-                    
-                    # Log the data
-                    self.db_manager.save_reading(name, temp)
-                    
-                    # Update UI
-                    self.root.after(0, self.create_sensor_widgets, name)
-                    if name in self.temperature_history:
-                        self.temperature_history[name].append(temp)
-                    if name in self.sensor_labels:
-                        self.root.after(0, self.sensor_labels[name].config,
-                                      {"text": f"{name}: {temp:.1f}°C"})
-                        self.root.after(0, self.update_sparkline, name)
-                
-                # Update status label with last save time
-                self.root.after(0, self.status_label.config,
-                              {"text": f"Last saved: {datetime.now().strftime('%H:%M:%S')}"})
-
             time.sleep(1)
 
     def on_closing(self):
@@ -188,9 +170,8 @@ class TemperatureMonitor:
     def run(self):
         self.root.mainloop()
 
-def main():
-    app = TemperatureMonitor()
-    app.run()
-
+# Remove or comment out the GUI-related code
 if __name__ == "__main__":
-    main()
+    while True:
+        get_hue_temperature_sensors(BRIDGE_IP, USERNAME)
+        time.sleep(1)

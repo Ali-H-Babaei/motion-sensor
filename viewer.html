@@ -17,6 +17,7 @@
             <option value="">Select a layout...</option>
         </select>
         <button onclick="loadFromServer()">Load Layout</button>
+        <button onclick="editSensorMapping()">Edit Sensor Mapping</button>
         <div class="temp-scale">
             <div class="temp-scale-item" style="background-color: #0000ff;"></div>
             <span class="temp-scale-label">Cold (15°C)</span>
@@ -27,10 +28,128 @@
         </div>
     </div>
 
+    <div id="mappingModal" class="modal">
+        <div class="modal-content">
+            <h2>Sensor Mapping</h2>
+            <div id="mappingContainer"></div>
+            <button onclick="saveSensorMapping()">Save</button>
+            <button onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
     <div class="floor-plan" id="floorPlan"></div>
 
     <script>
         let temperatures = {};
+        let sensorMapping = {};
+        
+        async function loadSensorMapping() {
+            try {
+                const response = await fetch('/api/sensor-mapping');
+                sensorMapping = await response.json();
+            } catch (error) {
+                console.error('Error loading sensor mapping:', error);
+            }
+        }
+
+        async function updateTemperatures() {
+            try {
+                const response = await fetch('/api/temperatures');
+                const sensorData = await response.json();
+                
+                // First set all rooms to grey (unmapped state)
+                document.querySelectorAll('.room').forEach(room => {
+                    const tempElement = room.querySelector('span');
+                    if (tempElement) {
+                        room.style.backgroundColor = '#cccccc';
+                        tempElement.textContent = 'No sensor';
+                    }
+                });
+                
+                // Then update only mapped rooms
+                for (const [roomTempId, sensorId] of Object.entries(sensorMapping.mappings)) {
+                    if (!sensorId) continue; // Skip rooms mapped to "no sensor"
+                    if (sensorData[sensorId]) {
+                        temperatures[roomTempId] = sensorData[sensorId].temperature;
+                        const room = document.querySelector(`#${roomTempId}`).parentElement;
+                        const tempElement = document.getElementById(roomTempId);
+                        if (!room || !tempElement) continue;
+
+                        room.style.backgroundColor = getTemperatureColor(temperatures[roomTempId]);
+                        tempElement.textContent = `${temperatures[roomTempId].toFixed(1)}°C`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating temperatures:', error);
+            }
+        }
+
+        function editSensorMapping() {
+            const modal = document.getElementById('mappingModal');
+            const container = document.getElementById('mappingContainer');
+            container.innerHTML = '';
+            
+            document.querySelectorAll('.room').forEach(room => {
+                const tempId = room.querySelector('span').id;
+                const select = document.createElement('select');
+                select.dataset.roomId = tempId;
+                
+                // Add no sensor option
+                select.innerHTML = `
+                    <option value="">No sensor</option>
+                    <option value="" disabled>──────────</option>
+                `;
+                
+                // Add sensor options (fetch from current temperature data)
+                fetch('/api/temperatures')
+                    .then(response => response.json())
+                    .then(sensors => {
+                        Object.entries(sensors).forEach(([sensorId, data]) => {
+                            const option = document.createElement('option');
+                            option.value = sensorId;
+                            option.textContent = data.name;
+                            option.selected = sensorMapping.mappings[tempId] === sensorId;
+                            select.appendChild(option);
+                        });
+                        // Set "No sensor" as selected if no mapping exists
+                        if (!sensorMapping.mappings[tempId]) {
+                            select.value = "";
+                        }
+                    });
+
+                const div = document.createElement('div');
+                div.innerHTML = `<label>${room.textContent.split('\n')[0]}: </label>`;
+                div.appendChild(select);
+                container.appendChild(div);
+            });
+            
+            modal.style.display = 'block';
+        }
+
+        async function saveSensorMapping() {
+            const mappings = {};
+            document.querySelectorAll('#mappingContainer select').forEach(select => {
+                if (select.value) {
+                    mappings[select.dataset.roomId] = select.value;
+                }
+            });
+            
+            try {
+                await fetch('/api/sensor-mapping', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mappings })
+                });
+                sensorMapping = { mappings };
+                closeModal();
+            } catch (error) {
+                console.error('Error saving mapping:', error);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('mappingModal').style.display = 'none';
+        }
 
         function getTemperatureColor(temp) {
             // Convert temperature to a color between blue (cold) and red (hot)
@@ -68,17 +187,6 @@
             return room;
         }
 
-        function updateTemperatures() {
-            for (const [id, temp] of Object.entries(temperatures)) {
-                const room = document.querySelector(`#${id}`).parentElement;
-                const tempElement = document.getElementById(id);
-                if (!room || !tempElement) continue;
-
-                room.style.backgroundColor = getTemperatureColor(temp);
-                tempElement.textContent = `${temp}°C`;
-            }
-        }
-
         async function updateLayoutList() {
             try {
                 const response = await fetch('/api/layouts');
@@ -109,32 +217,67 @@
 
             try {
                 const response = await fetch(`/api/load/${filename}`);
-                const layout = await response.json();
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                const layout = Array.isArray(data) ? data : [];
                 
                 document.getElementById('floorPlan').innerHTML = '';
                 temperatures = {};
 
+                if (layout.length === 0) {
+                    return;
+                }
+
                 layout.forEach(roomData => {
-                    const room = createRoom(roomData);
-                    document.getElementById('floorPlan').appendChild(room);
-                    temperatures[roomData.tempId] = 20;
+                    if (roomData && typeof roomData === 'object') {
+                        const room = createRoom(roomData);
+                        document.getElementById('floorPlan').appendChild(room);
+                        temperatures[roomData.tempId] = 20;
+                    }
                 });
             } catch (error) {
-                console.error('Error loading layout:', error);
-                alert('Error loading layout');
+                alert('Error loading layout: ' + error.message);
             }
         }
 
-        // Simulate temperature updates
-        setInterval(() => {
-            for (const id in temperatures) {
-                temperatures[id] = Math.floor(Math.random() * 15) + 15; // Random temp between 15 and 30
-            }
-            updateTemperatures();
-        }, 5000);
+        // Replace the temperature simulation interval with real data updates
+        setInterval(updateTemperatures, 1000);
 
         // Load layout list when page loads
         updateLayoutList();
+
+        // Load sensor mapping when page loads
+        loadSensorMapping();
     </script>
+
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000; /* Add this line */
+        }
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 500px;
+            z-index: 1001; /* Add this line */
+        }
+        #mappingContainer div {
+            margin: 10px 0;
+        }
+        select option[disabled] {
+            color: #999;
+            background-color: #eee;
+        }
+    </style>
 </body>
 </html>
