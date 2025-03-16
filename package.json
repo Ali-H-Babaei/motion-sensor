@@ -4,9 +4,10 @@
   "description": "Floor plan designer with temperature monitoring",
   "main": "server.js",
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "open": "^8.4.0"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node launcher.js"
   }
 }
