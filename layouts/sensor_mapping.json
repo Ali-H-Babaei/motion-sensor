@@ -1,9 +1,10 @@
 {
   "mappings": {
+    "temp-office": "115",
     "temp-bedroom": "111",
     "temp-ensuite": "104",
     "temp-wardrobe": "63",
-    "temp-office": "23",
+    "temp-sim-room": "23",
     "temp-hallway": "28",
     "temp-bathroom": "95",
     "temp-kitchen": "82",

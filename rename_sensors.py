@@ -8,13 +8,14 @@ USERNAME = 'cwdsZSo7ZvSxxoNBS9funK2QfizEyRG3MdABw-44'  # Your Hue username
 # List of sensor IDs and their new names
 sensors_to_rename = [
     {'id': '4', 'new_name': 'Porch_ts'},
-    {'id': '23', 'new_name': 'Office_ts'},
+    {'id': '23', 'new_name': 'Sim_room_ts'},
     {'id': '28', 'new_name': 'Hallway_ts'},
     {'id': '63', 'new_name': 'Wardrobe_ts'},
     {'id': '82', 'new_name': 'Kitchen_ts'},
     {'id': '95', 'new_name': 'Bathroom_ts'},
     {'id': '104', 'new_name': 'Ensuite_ts'},
-    {'id': '111', 'new_name': 'Bedroom_ts'}
+    {'id': '111', 'new_name': 'Bedroom_ts'},
+    {'id': '115', 'new_name': 'Office_ts'}
 ]
 
 def rename_sensor(bridge_ip, username, sensor_id, new_name):

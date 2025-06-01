@@ -1,0 +1,90 @@
+[
+  {
+    "name": "Bedroom",
+    "tempId": "temp-bedroom",
+    "left": "140px",
+    "top": "340px",
+    "width": "200px",
+    "height": "140px"
+  },
+  {
+    "name": "Ensuite",
+    "tempId": "temp-ensuite",
+    "left": "140px",
+    "top": "260px",
+    "width": "100px",
+    "height": "80px"
+  },
+  {
+    "name": "Wardrobe",
+    "tempId": "temp-wardrobe",
+    "left": "240px",
+    "top": "260px",
+    "width": "100px",
+    "height": "80px"
+  },
+  {
+    "name": "Office",
+    "tempId": "temp-office",
+    "left": "140px",
+    "top": "160px",
+    "width": "200px",
+    "height": "100px"
+  },
+  {
+    "name": "Hallway",
+    "tempId": "temp-hallway",
+    "left": "340px",
+    "top": "140px",
+    "width": "100px",
+    "height": "240px"
+  },
+  {
+    "name": "Bathroom",
+    "tempId": "temp-bathroom",
+    "left": "340px",
+    "top": "60px",
+    "width": "100px",
+    "height": "80px"
+  },
+  {
+    "name": "Living Room",
+    "tempId": "temp-living-room",
+    "left": "440px",
+    "top": "60px",
+    "width": "200px",
+    "height": "140px"
+  },
+  {
+    "name": "Kitchen",
+    "tempId": "temp-kitchen",
+    "left": "440px",
+    "top": "200px",
+    "width": "200px",
+    "height": "180px"
+  },
+  {
+    "name": "Laundry",
+    "tempId": "temp-laundry",
+    "left": "640px",
+    "top": "200px",
+    "width": "100px",
+    "height": "80px"
+  },
+  {
+    "name": "Porch",
+    "tempId": "temp-porch",
+    "left": "340px",
+    "top": "380px",
+    "width": "100px",
+    "height": "100px"
+  },
+  {
+    "name": "Sim Room",
+    "tempId": "temp-sim-room",
+    "left": "140px",
+    "top": "60px",
+    "width": "200px",
+    "height": "100px"
+  }
+]
